@@ -1,0 +1,34 @@
+server:
+  port: ${PORT:8080}
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:aftersales;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE}
+    username: ${DB_USER:sa}
+    password: ${DB_PASSWORD:}
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 500ms
+      timeout: 500ms
+  task:
+    scheduling:
+      pool:
+        size: 2
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+app:
+  demo:
+    enabled: ${DEMO_SEED:true}
+    customer-password: ${DEMO_CUSTOMER_PASSWORD:customer123}
+    agent-password: ${DEMO_AGENT_PASSWORD:agent123}
+  ai:
+    endpoint: ${AI_ENDPOINT:}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:25}
