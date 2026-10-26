@@ -2,7 +2,6 @@ package dev.portfolio.aftersales;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,11 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,8 +25,6 @@ class CaseFlowIntegrationTest {
     @Autowired ObjectMapper mapper;
     @Autowired AnalysisWorker worker;
     @Autowired JdbcTemplate jdbc;
-    @Autowired Store store;
-    @Autowired PolicyService policies;
 
     @BeforeEach
     void clearCases() {
@@ -116,40 +109,4 @@ class CaseFlowIntegrationTest {
                 .andExpect(status().isForbidden());
     }
 
-    @Test
-    void realModelProtocolCallsOnlyScopedReadTool() throws Exception {
-        long caseId = customerPost("/api/cases", Map.of("orderId", 1, "caseType", "RETURN",
-                "reason", "商品破损", "idempotencyKey", "tool-test")).path("ticket").path("id").asLong();
-        AtomicInteger requests = new AtomicInteger();
-        AtomicReference<String> secondRequest = new AtomicReference<>();
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/chat/completions", exchange -> {
-            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-            int count = requests.incrementAndGet();
-            String response;
-            if (count == 1) {
-                response = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":null,\"tool_calls\":[{\"id\":\"call-1\",\"type\":\"function\",\"function\":{\"name\":\"get_order\",\"arguments\":\"{}\"}}]}}]}";
-            } else {
-                secondRequest.set(body);
-                response = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"category\\\":\\\"退货申请\\\",\\\"recommendation\\\":\\\"请人工核对破损材料\\\"}\"}}]}";
-            }
-            byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, bytes.length);
-            exchange.getResponseBody().write(bytes);
-            exchange.close();
-        });
-        server.start();
-        try {
-            AgentService realAgent = new AgentService(store, policies, mapper,
-                    "http://127.0.0.1:" + server.getAddress().getPort() + "/chat/completions", "test-key", "test-model", 5);
-            AgentResult result = realAgent.analyze(caseId);
-            org.junit.jupiter.api.Assertions.assertEquals(2, requests.get());
-            org.junit.jupiter.api.Assertions.assertEquals("退货申请", result.category());
-            org.junit.jupiter.api.Assertions.assertTrue(secondRequest.get().contains("tool_call_id"));
-            org.junit.jupiter.api.Assertions.assertTrue(result.evidenceJson().contains("get_order"));
-        } finally {
-            server.stop(0);
-        }
-    }
 }

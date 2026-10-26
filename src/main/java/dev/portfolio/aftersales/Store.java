@@ -181,9 +181,11 @@ class Store {
                 caseId, result.category(), result.recommendation(), result.evidenceJson(), result.modelName());
     }
 
-    List<CaseRecord> similarCases(long orderId, long excludedCaseId) {
-        return jdbc.query("SELECT * FROM after_sale_cases WHERE order_id<>? AND id<>? AND status IN ('APPROVED','REJECTED','CLOSED') ORDER BY id DESC LIMIT 5",
-                CASE, orderId, excludedCaseId);
+    List<CaseRecord> similarCases(long customerId, String sku, long excludedCaseId) {
+        return jdbc.query("SELECT c.* FROM after_sale_cases c JOIN customer_orders o ON o.id=c.order_id "
+                        + "WHERE o.customer_id=? AND o.sku=? AND c.id<>? "
+                        + "AND c.status IN ('APPROVED','REJECTED','CLOSED') ORDER BY c.id DESC LIMIT 5",
+                CASE, customerId, sku, excludedCaseId);
     }
 
     int count(String table) {

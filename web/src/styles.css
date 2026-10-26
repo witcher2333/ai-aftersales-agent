@@ -86,6 +86,7 @@ textarea { min-height: 88px; resize: vertical; }
 .ai-heading .badge { margin-left: auto; }
 .ai-icon { width: 25px; height: 25px; background: #dfe9ff; color: #4d6fc3; border-radius: 7px; display: grid; place-items: center; }
 .ai-section strong { font-size: 13px; }
+.ai-result-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ai-section small { color: #93a0b0; }
 details { margin: 12px 0; font-size: 12px; color: #5472a0; }
 summary { cursor: pointer; }

@@ -10,6 +10,15 @@ const labels = {
   DELIVERED: '已签收', IN_TRANSIT: '运输中',
 }
 
+const assessmentLabels = {
+  READY: '依据已核实', MISSING_INFORMATION: '信息缺失',
+  DATA_CONFLICT: '数据冲突', INSUFFICIENT_EVIDENCE: '证据不足',
+}
+
+function parseEvidence(raw) {
+  try { return JSON.parse(raw) } catch { return null }
+}
+
 function App() {
   const [auth, setAuth] = useState(sessionStorage.getItem('demo-auth') || '')
   const [loginName, setLoginName] = useState('customer')
@@ -134,6 +143,8 @@ function App() {
   </div>
 
   const agent = me.role === 'AGENT'
+  const evidence = selected?.analysis ? parseEvidence(selected.analysis.evidenceJson) : null
+  const queries = Array.isArray(evidence) ? evidence : evidence?.queries || []
   return <div className="app-shell">
     <aside className="sidebar">
       <div className="sidebar-brand"><span className="brand-mark small">A</span><span>Aftercare<br /><strong>工作台</strong></span></div>
@@ -168,7 +179,10 @@ function App() {
             <div className="info-grid"><div><span>订单商品</span><strong>{selected.order.itemName}</strong></div><div><span>订单金额</span><strong>¥{(selected.order.amountCents / 100).toFixed(2)}</strong></div><div><span>物流状态</span><strong>{labels[selected.order.logisticsStatus]}</strong></div><div><span>工单版本</span><strong>v{selected.ticket.version}</strong></div></div>
             <div className="section"><h3>问题描述</h3><p>{selected.ticket.reason}</p></div>
             <div className="section ai-section"><div className="ai-heading"><span className="ai-icon">✦</span><h3>AI 辅助分析</h3><span className="badge neutral">{labels[selected.analysisTask?.status] || '未启动'}</span></div>
-              {selected.analysis ? <><strong>{selected.analysis.category}</strong><p>{selected.analysis.recommendation}</p><details><summary>查看查询依据</summary><pre>{JSON.stringify(JSON.parse(selected.analysis.evidenceJson), null, 2)}</pre></details><small>分析来源：{selected.analysis.modelName}</small></>
+              {selected.analysis ? <><div className="ai-result-header"><strong>{selected.analysis.category}</strong>{evidence?.assessment && <span className="badge neutral">{assessmentLabels[evidence.assessment] || evidence.assessment}</span>}</div><p>{selected.analysis.recommendation}</p>
+                {evidence?.missingInformation?.length > 0 && <p className="muted">待补充：{evidence.missingInformation.join('；')}</p>}
+                {evidence?.conflicts?.length > 0 && <p className="muted">待核对冲突：{evidence.conflicts.join('；')}</p>}
+                <details><summary>查看查询依据</summary><pre>{JSON.stringify(queries, null, 2)}</pre></details><small>分析来源：{selected.analysis.modelName} · 最终决定由客服作出</small></>
                 : <p className="muted">{selected.analysisTask?.lastError || '分析任务正在排队，页面会自动更新。'}</p>}
               {agent && selected.analysisTask?.status === 'FAILED' && <button className="ghost" disabled={busy} onClick={() => action(`/api/cases/${selected.ticket.id}/analysis/retry`)}>重试分析</button>}
             </div>

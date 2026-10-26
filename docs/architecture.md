@@ -31,7 +31,9 @@ SUBMITTED → IN_REVIEW → APPROVED → CLOSED
 
 ## Agent 边界
 
-可用工具固定为 `get_order`、`get_logistics`、`get_policies`、`find_similar_cases`。工具的目标订单由服务端当前工单决定，模型不能指定任意订单 ID。模型最多调用五轮，输出分类、建议和查询依据。模型服务未配置时，使用明确标记的 `demo-rule-engine` 模拟结果。
+可用工具固定为 `get_order`、`get_logistics`、`get_policies`、`find_similar_cases`。工具参数为空，目标订单由服务端当前工单决定，模型不能指定任意订单 ID。历史案例只返回同一客户、同一商品、已经处理的工单。规则工具按工单类型筛选生效规则。模型最多调用五轮，每轮最多四次工具调用。
+
+提示词要求先查订单、物流和规则，区分 `READY`、`MISSING_INFORMATION`、`DATA_CONFLICT`、`INSUFFICIENT_EVIDENCE`，并对缺失、冲突、证据不足分别说明。工具结果与用户描述均作为待核实数据，不能当成指令。模型按 JSON Schema 输出，服务端再验证六个字段、状态与理由、实际调用过的依据，以及已核实状态所需的三项基础依据。结果中的查询依据来自服务端工具返回值，客服页面显示评估状态、待补资料与冲突。模型服务未配置时使用明确标记的 `demo-rule-engine` 模拟结果；模型不能调用处理决定接口。
 
 ## 可扩展方向
 
